@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
+from langgraph.prebuilt import create_react_agent
+
 from agent.prompt import planner_prompt, architect_prompt, coder_system_prompt
 from agent.state import Plan, TaskPlan
 
@@ -64,9 +66,16 @@ def coder_agent(state: GraphState) -> dict:
     use_prompt = f"Task: {current_task['task_description']}\nFile: {current_task['filepath']}"
 
     system_prompt = coder_system_prompt()
-    response = llm.invoke(system_prompt + "\n" + use_prompt)
-    print(f"coder_agent generated code for {current_task['filepath']}")
-    return {"code": response.content}
+    # response = llm.invoke(system_prompt + "\n" + use_prompt)
+    # print(f"coder_agent generated code for {current_task['filepath']}")
+
+    coder_tools = ["read_file", "write_file", "list_files", "get_current_directory"]
+    react_agent = create_react_agent(llm, coder_tools)
+    react_agent.invoke({"messages": [{"role": "system", "content": system_prompt},
+                       {"role": "user", "content": use_prompt}]})
+
+
+    return {}
 
 graph = StateGraph(GraphState)
 graph.add_node("planner", planner_agent)
