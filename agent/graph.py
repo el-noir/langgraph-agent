@@ -1,10 +1,14 @@
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
-from agent.prompt import planner_prompt, architect_prompt
+from agent.prompt import planner_prompt, architect_prompt, coder_system_prompt
 from agent.state import Plan, TaskPlan
 
 load_dotenv()
+
+# set_debug(True)
+# set_verbose(True)
+
 llm = ChatGroq(model="llama-3.3-70b-versatile")
 
 from pydantic import BaseModel
@@ -14,6 +18,8 @@ class GraphState(BaseModel):
     user_prompt: str
     plan: Optional[Plan] = None
     task_plan: Optional[dict] = None  # Add task_plan field to store architect output
+    code: Optional[str] = None  # Add code field to store coder output
+
 
 def planner_agent(state: GraphState) -> dict:
     response: Plan = llm.with_structured_output(Plan).invoke(planner_prompt(state.user_prompt))
@@ -42,13 +48,36 @@ def architect_agent(state: GraphState) -> dict:
     print("architect_agent returning task_plan with", len(task_plan_dict.get('implementation_steps', [])), "steps")
     return {"task_plan": task_plan_dict}
 
+def coder_agent(state: GraphState) -> dict:
+    print("coder_agent starting...")
+    task_plan_dict = state.task_plan
+    if task_plan_dict is None:
+        raise ValueError("coder_agent received no task_plan in state")
+
+    steps = task_plan_dict.get('implementation_steps', [])
+    if not steps:
+        raise ValueError("coder_agent received empty implementation_steps")
+
+    current_step_idx = 0
+    current_task = steps[current_step_idx]
+
+    use_prompt = f"Task: {current_task['task_description']}\nFile: {current_task['filepath']}"
+
+    system_prompt = coder_system_prompt()
+    response = llm.invoke(system_prompt + "\n" + use_prompt)
+    print(f"coder_agent generated code for {current_task['filepath']}")
+    return {"code": response.content}
 
 graph = StateGraph(GraphState)
 graph.add_node("planner", planner_agent)
 graph.add_node("architect", architect_agent)
 graph.add_edge("planner", "architect")
-graph.add_edge("architect", END)
+graph.add_node("coder", coder_agent)
+graph.add_edge("architect", "coder")
+graph.add_edge("coder", END)
 graph.set_entry_point("planner")
+
+
 if __name__ == "__main__":
     agent = graph.compile()
     result = agent.invoke(GraphState(user_prompt="create a simple calculator web application"))
