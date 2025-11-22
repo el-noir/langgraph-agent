@@ -1,0 +1,131 @@
+:root {
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --bg-color: #f0f4f8;
+  --calc-bg: #ffffff;
+  --display-bg: #e9ecef;
+  --text-color: #212529;
+  --operator-color: #ff9500;
+  --operator-bg: #fff3e0;
+  --equals-color: #ffffff;
+  --equals-bg: #28a745;
+  --clear-color: #ffffff;
+  --clear-bg: #dc3545;
+  --backspace-color: #ffffff;
+  --backspace-bg: #6c757d;
+  --button-bg: #f8f9fa;
+  --button-hover-bg: #e2e6ea;
+  --spacing: 1rem;
+  --border-radius: 0.5rem;
+}
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Calculator Container */
+.calculator {
+  background-color: var(--calc-bg);
+  max-width: 400px;
+  width: 100%;
+  padding: var(--spacing);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing);
+}
+
+/* Display */
+.display {
+  background-color: var(--display-bg);
+  height: 4rem;
+  line-height: 4rem;
+  text-align: right;
+  padding: 0 0.75rem;
+  font-size: 2rem;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Buttons Grid */
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+/* Individual Button */
+.btn {
+  background-color: var(--button-bg);
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1.25rem;
+  font-weight: 500;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  min-height: 3rem;
+}
+
+.btn:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+/* Specific Button Types */
+.operator {
+  background-color: var(--operator-bg);
+  color: var(--operator-color);
+}
+
+.equals {
+  background-color: var(--equals-bg);
+  color: var(--equals-color);
+  grid-column: span 2;
+}
+
+.clear {
+  background-color: var(--clear-bg);
+  color: var(--clear-color);
+}
+
+.backspace {
+  background-color: var(--backspace-bg);
+  color: var(--backspace-color);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+  .calculator {
+    padding: 0.75rem;
+  }
+
+  .display {
+    height: 3rem;
+    line-height: 3rem;
+    font-size: 1.5rem;
+  }
+
+  .btn {
+    font-size: 1rem;
+    padding: 0.5rem;
+    min-height: 2.5rem;
+  }
+}
