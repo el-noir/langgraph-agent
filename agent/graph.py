@@ -1,17 +1,30 @@
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from langgraph.graph import StateGraph
 from langchain_groq import ChatGroq
-from prompt import *
-from state import *
-load_dotenv()
+from agent.prompt import planner_prompt
+from agent.state import Plan  # explicit import
 
-# Replace the decommissioned model with a supported one
+load_dotenv()
 llm = ChatGroq(model="llama-3.3-70b-versatile")
 
-user_prompt = 'create a simple calculator web application'
+from pydantic import BaseModel
+from typing import Optional
 
-prompt = planner_prompt(user_prompt)
+class GraphState(BaseModel):
+    user_prompt: str
+    plan: Optional[Plan] = None
 
-response = llm.with_structured_output(Plan).invoke(prompt)
+def planner_agent(state: GraphState) -> dict:
+    response: Plan = llm.with_structured_output(Plan).invoke(planner_prompt(state.user_prompt))
+    print("planner_agent got response:", repr(response))
+    print("response type:", type(response))
+    return {"plan": response.dict()}
 
-print(response)
+graph = StateGraph(GraphState)
+graph.add_node("planner", planner_agent)
+graph.set_entry_point("planner")
+
+if __name__ == "__main__":
+    agent = graph.compile()
+    result = agent.invoke(GraphState(user_prompt="create a simple calculator web application"))
+    print(result)
