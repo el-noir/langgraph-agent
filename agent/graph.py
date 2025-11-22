@@ -1,10 +1,11 @@
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
-from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from agent.prompt import planner_prompt, architect_prompt, coder_system_prompt
 from agent.state import Plan, TaskPlan
+from agent.tools import read_file, write_file
 
 load_dotenv()
 
@@ -60,21 +61,47 @@ def coder_agent(state: GraphState) -> dict:
     if not steps:
         raise ValueError("coder_agent received empty implementation_steps")
 
-    current_step_idx = 0
-    current_task = steps[current_step_idx]
-
-    use_prompt = f"Task: {current_task['task_description']}\nFile: {current_task['filepath']}"
-
     system_prompt = coder_system_prompt()
-    # response = llm.invoke(system_prompt + "\n" + use_prompt)
-    # print(f"coder_agent generated code for {current_task['filepath']}")
 
-    coder_tools = ["read_file", "write_file", "list_files", "get_current_directory"]
-    react_agent = create_react_agent(llm, coder_tools)
-    react_agent.invoke({"messages": [{"role": "system", "content": system_prompt},
-                       {"role": "user", "content": use_prompt}]})
+    for idx, current_task in enumerate(steps):
+        print(f"\n--- Processing task {idx + 1}/{len(steps)}: {current_task['filepath']} ---")
 
+        # Read existing content using the tool directly
+        existing_content = read_file.invoke({"path": current_task['filepath']})
 
+        # Build a comprehensive prompt for code generation
+        use_prompt = f"""Task: {current_task['task_description']}
+
+Filepath: {current_task['filepath']}
+
+Existing content:
+{existing_content if existing_content else '(empty file)'}
+
+Instructions:
+- Generate ONLY the file content, no explanations
+- Make sure the code is complete and functional
+- Include all necessary imports, functions, and logic
+- If file already has content, enhance or complete it
+
+Generate the complete file content now:"""
+
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=use_prompt)
+        ]
+
+        response = llm.invoke(messages)
+        generated_code = response.content
+
+        write_result = write_file.invoke({
+            "path": current_task['filepath'],
+            "content": generated_code
+        })
+
+        print(f"✓ Completed task for {current_task['filepath']}")
+        print(f"  {write_result}")
+
+    print(f"\n=== All {len(steps)} tasks completed ===")
     return {}
 
 graph = StateGraph(GraphState)
@@ -89,5 +116,5 @@ graph.set_entry_point("planner")
 
 if __name__ == "__main__":
     agent = graph.compile()
-    result = agent.invoke(GraphState(user_prompt="create a simple calculator web application"))
+    result = agent.invoke(GraphState(user_prompt="create a calculator web application"))
     print(result)
